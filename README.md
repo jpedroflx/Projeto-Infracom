@@ -30,7 +30,7 @@ O servidor salva o arquivo e depois **devolve o mesmo arquivo** para o cliente c
 No terminal, dentro da pasta do projeto:
 
 ```bash
-python udp_server.py
+python udp_server.py 5000 0.2
 ```
 
 O servidor ficará escutando na porta `5000` aguardando arquivos.
@@ -42,7 +42,7 @@ O servidor ficará escutando na porta `5000` aguardando arquivos.
 Em outro terminal, também na pasta do projeto:
 
 ```bash
-python udp_client.py 127.0.0.1 5000 exemplo.txt
+python udp_client.py 127.0.0.1 5000 exemplo.txt 0.2
 ```
 
 - `127.0.0.1` → IP do servidor (localhost)  
@@ -54,7 +54,7 @@ python udp_client.py 127.0.0.1 5000 exemplo.txt
 ### 3. Rodar o cliente com uma imagem (ou outro tipo de arquivo)
 
 ```bash
-python udp_client.py 127.0.0.1 5000 foto.png
+python udp_client.py 127.0.0.1 5000 foto.png 0.2
 ```
 
 (use o nome do arquivo de imagem que você quiser)

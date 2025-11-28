@@ -1,95 +1,92 @@
+"""
+Uso:
+    python3 server.py <PORTA> [prob_perda]
+Exemplo:
+    python3 server.py 5000 0.3
+    python3 server.py 8080
+"""
 import socket
+import sys
 import os
+import rdt3
 
-SERVER_HOST = "0.0.0.0"   # escuta em todas as interfaces
-SERVER_PORT = 5000
-BUFFER_SIZE = 1024
-
-def receber_arquivo(sock, primeiro_pacote, client_addr):
-    """
-    Recebe um arquivo enviado pelo cliente e o salva no servidor.
-    O primeiro pacote contém o cabeçalho com o nome do arquivo.
-    """
-    header = primeiro_pacote.decode("utf-8")
-    # Formato: FILENAME:<nome_arquivo>
-    if not header.startswith("FILENAME:"):
-        print("Cabeçalho inválido recebido de", client_addr)
-        return None, None
-
-    nome_original = header.split(":", 1)[1]
-    nome_recebido = f"server_{os.path.basename(nome_original)}"
-
-    print(f"[SERVIDOR] Recebendo arquivo '{nome_original}' de {client_addr}...")
-    print(f"[SERVIDOR] Salvando localmente como '{nome_recebido}'")
-
-    with open(nome_recebido, "wb") as f:
-        while True:
-            data, addr = sock.recvfrom(BUFFER_SIZE)
-            # Todos os pacotes desse arquivo devem vir do mesmo cliente
-            if addr != client_addr:
-                print("Pacote ignorado de outro cliente:", addr)
-                continue
-
-            if data == b"EOF":
-                # fim do arquivo
-                break
-
-            f.write(data)
-
-    print(f"[SERVIDOR] Recebimento concluído. Arquivo salvo: {nome_recebido}")
-    return nome_original, nome_recebido
-
-
-def devolver_arquivo(sock, client_addr, nome_original, nome_salvo):
-    """
-    Envia o arquivo de volta ao cliente, alterando o nome.
-    """
-    # Nome alterado antes da devolução (requisito do enunciado)
-    novo_nome = f"devolvido_{os.path.basename(nome_original)}"
-    tamanho = os.path.getsize(nome_salvo)
-
-    # Cabeçalho de devolução: FILENAME:<novo_nome>|SIZE:<tamanho>
-    header = f"FILENAME:{novo_nome}|SIZE:{tamanho}"
-    sock.sendto(header.encode("utf-8"), client_addr)
-
-    print(f"[SERVIDOR] Devolvendo arquivo '{nome_salvo}' como '{novo_nome}' para {client_addr}...")
-
-    with open(nome_salvo, "rb") as f:
-        while True:
-            chunk = f.read(BUFFER_SIZE)
-            if not chunk:
-                break
-            sock.sendto(chunk, client_addr)
-
-    sock.sendto(b"EOF", client_addr)
-    print(f"[SERVIDOR] Devolução concluída.\n")
-
+# Configurações do servidor
+SERVER_HOST = "0.0.0.0"  # Escuta em todas as interfaces
 
 def main():
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind((SERVER_HOST, SERVER_PORT))
+    # Verifica argumentos da linha de comando
+    if len(sys.argv) < 2:
+        print(f"Uso: {sys.argv[0]} <PORTA> [prob_perda]")
+        print("Exemplo: python3 server.py 5000 0.2")
+        sys.exit(1)
+    
+    # Configurações do servidor
+    port = int(sys.argv[1])
+    loss_prob = float(sys.argv[2]) if len(sys.argv) >= 3 else 0.0
 
-    print(f"[SERVIDOR] Servidor UDP iniciado em {SERVER_HOST}:{SERVER_PORT}")
-    print("[SERVIDOR] Aguardando arquivos... (Ctrl+C para sair)\n")
+    # Cria e configura socket UDP
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind((SERVER_HOST, port))
+    
+    print("=" * 60)
+    print("SERVIDOR RDT 3.0 - TRANSFERÊNCIA CONFIÁVEL")
+    print("=" * 60)
+    print(f"Endereço: {SERVER_HOST}:{port}")
+    print(f"Probabilidade de perda: {loss_prob * 100}%")
+    print("=" * 60)
+    print("Aguardando conexões de clientes...")
+    print("Pressione Ctrl+C para encerrar o servidor")
+    print("=" * 60)
 
     try:
         while True:
-            # Primeiro pacote de um arquivo: cabeçalho com o nome
-            data, client_addr = sock.recvfrom(BUFFER_SIZE)
-            nome_original, nome_salvo = receber_arquivo(sock, data, client_addr)
+            print(f"\n" + "="*50)
+            print(f" Aguardando novo cliente...")
+            print("="*50)
+            
+            try:
+                #  RECEBE ARQUIVO DO CLIENTE 
+                saved_path, client_addr = rdt3.rdt_recv_file(
+                    sock, 
+                    out_dir=".", 
+                    loss_prob=loss_prob, 
+                    timeout_for_recv=1.0
+                )
+                
+                print(f"[SERVIDOR]  Arquivo recebido: {saved_path}")
+                print(f"[SERVIDOR]  Tamanho: {os.path.getsize(saved_path)} bytes")
+                print(f"[SERVIDOR]  Cliente: {client_addr}")
 
-            if nome_original is None:
-                # algo deu errado com o cabeçalho
-                continue
-
-            # devolve o arquivo para o cliente
-            devolver_arquivo(sock, client_addr, nome_original, nome_salvo)
+                # DEVOLVE ARQUIVO PARA O CLIENTE 
+                print(f"[SERVIDOR] Iniciando devolução do arquivo para {client_addr}...")
+                rdt3.rdt_send_file(
+                    sock, 
+                    client_addr, 
+                    saved_path, 
+                    loss_prob=loss_prob, 
+                    timeout=1.0
+                )
+                
+                print(f"[SERVIDOR]  Devolução concluída para {client_addr}")
+                
+                # remove arquivo temporário
+                try:
+                    os.remove(saved_path)
+                    print(f"[SERVIDOR]   Arquivo temporário removido: {saved_path}")
+                except:
+                    pass  # Ignora erros na remoção
+                    
+            except KeyboardInterrupt:
+                raise  # Re-lança para ser tratado no loop externo
+            except Exception as e:
+                print(f"[SERVIDOR]  Erro com cliente: {e}")
+                continue  # Continua atendendo outros clientes
 
     except KeyboardInterrupt:
-        print("\n[SERVIDOR] Encerrando servidor...")
+        print(f"\n[SERVIDOR]  Encerrando servidor...")
     finally:
         sock.close()
+        print(f"[SERVIDOR]  Servidor encerrado.")
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
