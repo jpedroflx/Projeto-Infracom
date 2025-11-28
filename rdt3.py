@@ -3,17 +3,9 @@ import random
 import os
 import time
 
-# =============================================================================
-# CONSTANTES GLOBAIS
-# =============================================================================
-
 BUFFER_SIZE = 1024                    # Tamanho máximo do buffer UDP
 PAYLOAD_SIZE = BUFFER_SIZE - 64       # Espaço para dados (reserva cabeçalho)
 DEFAULT_TIMEOUT = 0.05                # Timeout padrão em segundos
-
-# =============================================================================
-# SIMULAÇÃO DE PERDAS
-# =============================================================================
 
 def _maybe_drop(loss_prob: float) -> bool:
     """
@@ -25,10 +17,8 @@ def _maybe_drop(loss_prob: float) -> bool:
     """
     return random.random() < loss_prob
 
-# =============================================================================
-# FUNÇÕES DE MANIPULAÇÃO DE PACOTES
-# =============================================================================
 
+# FUNÇÕES DE MANIPULAÇÃO DE PACOTES
 def _make_data_packet(seq: int, payload: bytes) -> bytes:
     """
     Cria pacote de dados no formato: "SEQ:<n>|" + dados
@@ -73,10 +63,8 @@ def _parse_packet(packet: bytes) -> tuple:
     
     return 'UNKNOWN', None, b''
 
-# =============================================================================
-#  SEND AND WAIT
-# =============================================================================
 
+#  SEND AND WAIT
 def _send_and_wait_ack(sock: socket.socket, addr: tuple, packet: bytes, 
                        seq: int, loss_prob: float, timeout: float):
     """
@@ -114,10 +102,8 @@ def _send_and_wait_ack(sock: socket.socket, addr: tuple, packet: bytes,
         else:
             print(f"[RDT] Pacote inesperado enquanto aguardava ACK: {ptype} {ackseq}. Ignorando...")
 
-# =============================================================================
-# LÓGICA DO RECEPTOR
-# =============================================================================
 
+# LÓGICA DO RECEPTOR
 def _receive_data_packet(sock: socket.socket, expected_seq: int,
                          loss_prob: float, timeout_for_recv: float) -> tuple:
     """
@@ -165,12 +151,10 @@ def _receive_data_packet(sock: socket.socket, expected_seq: int,
                 ack = _make_ack_packet(seq)
                 sock.sendto(ack, addr)
                 print(f"[RDT] Reenviado ACK:{seq} para {addr}")
-            # Continua aguardando pacote com sequência correta
+            
 
-# =============================================================================
+
 # API PÚBLICA - ENVIO DE ARQUIVO
-# =============================================================================
-
 def rdt_send_file(sock: socket.socket, addr: tuple, filepath: str,
                   loss_prob: float = 0.0, timeout: float = DEFAULT_TIMEOUT):
     """
@@ -219,9 +203,6 @@ def rdt_send_file(sock: socket.socket, addr: tuple, filepath: str,
     
     print("[RDT] >>> Envio de arquivo concluído (RDT).")
 
-# =============================================================================
-# API PÚBLICA - RECEPÇÃO DE ARQUIVO
-# =============================================================================
 
 def rdt_recv_file(sock: socket.socket, out_dir: str = ".",
                   loss_prob: float = 0.0, timeout_for_recv: float = 1.0) -> tuple:
