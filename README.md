@@ -3,15 +3,12 @@
 ## Equipe 2
 
 - João Pedro Felix da Silva
-- Keroly dos Santos silva 
 - Thaylson Fernando da Silva 
 - Igor Vasconcelos Antero
 
 ## Descrição
 
-Este projeto implementa um cliente e um servidor em **Python** usando **UDP** (`socket`).  
-O cliente envia um arquivo (texto, imagem, etc.) em pacotes de até **1024 bytes** para o servidor.  
-O servidor salva o arquivo e depois **devolve o mesmo arquivo** para o cliente com o nome alterado.
+Este projeto implementa um sistema Cliente-Servidor usando UDP, agora evoluído para suportar transferência confiável de arquivos via uma versão funcional do protocolo RDT 3.0 (Stop-and-Wait com ACKs, timeouts e retransmissão). O cliente envia um arquivo de qualquer tipo (texto, imagem, PDF, etc.) para o servidor, que o salva e devolve novamente ao cliente com o nome alterado. A devolução também é feita usando RDT 3.0, garantindo que nenhum pacote seja perdido ou duplicado sem controle.
 
 ---
 
